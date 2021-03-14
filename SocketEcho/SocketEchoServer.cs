@@ -8,9 +8,9 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace SocketEcho
+namespace NetworkEcho.SocketEcho
 {
-    public class SocketEchoServer
+    public sealed class SocketEchoServer
     {
         public IReadOnlyList<Socket> ConnectedSockets { get; }
         private List<Socket> _connectedSockets;
@@ -31,41 +31,84 @@ namespace SocketEcho
             _serverSocket = new Socket(socketType, protocolType);
             _bufferSize = bufferSize;
             _endPoint = endpoint;
-            _logger = logger ?? new Logger<SocketEchoServer>(new LoggerFactory());
+            ;
+            _logger = logger ?? LoggerFactory.Create((_) => _.AddConsole()).CreateLogger<SocketEchoServer>();
 
             _cancelled = false;
             _connectedSockets = new List<Socket>();
             ConnectedSockets = _connectedSockets.AsReadOnly();
+            _bufferPool = ArrayPool<byte>.Create();
         }
         public void Start(int backlog = 1)
         {
-            _serverSocket.Bind(_endPoint);
-            _serverSocket.Listen(backlog);
-            new Task(async () => await ListenForIncomingConnections()).Start();
+            try
+            {
+                _serverSocket.Bind(_endPoint);
+                _serverSocket.Listen(backlog);
+                new Task(async () => await ListenForIncomingConnections()).Start();
+            }
+            catch (Exception e)
+            {
+
+            }
+        }
+        public void Stop()
+        {
+            try
+            {
+                _cancelled = true;
+                _serverSocket.Close();
+            }
+            catch (Exception e)
+            {
+
+            }
         }
         private async Task ListenForIncomingConnections()
         {
             do
             {
-                Socket acceptedSocket = await _serverSocket.AcceptAsync();
-                _logger.LogInformation("Connection accepted!");
-                new Task(async () => await AcceptDataAsync(acceptedSocket)).Start();
+                try
+                {
+                    Socket acceptedSocket = await _serverSocket.AcceptAsync();
+                    _logger.LogInformation("Connection accepted!");
+                    new Task(async () => await AcceptDataAsync(acceptedSocket)).Start();
+                }
+                catch (Exception e)
+                {
+
+                }
             } while (!_cancelled);
         }
         private async Task AcceptDataAsync(Socket socket)
         {
             do
             {
-                byte[] buffer = _bufferPool.Rent(_bufferSize);
-                int readBytes = await socket.ReceiveAsync(buffer, SocketFlags.None);
-                _logger.LogInformation("Data received!");
-                new Task(async () => await EchoDataAsync(socket, buffer[..readBytes])).Start();
+                try
+                {
+                    byte[] buffer = _bufferPool.Rent(_bufferSize);
+                    int readBytes = await socket.ReceiveAsync(buffer, SocketFlags.None);
+                    _logger.LogInformation("Data received!");
+                    new Task(async () => await EchoDataAsync(socket, buffer[..readBytes])).Start();
+                    _bufferPool.Return(buffer);
+                }
+                catch (Exception)
+                {
+
+                }
             } while (!_cancelled);
         }
         private async Task EchoDataAsync(Socket socket, byte[] data)
         {
-            await socket.SendAsync(data, SocketFlags.None);
-            _logger.LogInformation("Echo'ed data!");
+            try
+            {
+                await socket.SendAsync(data, SocketFlags.None);
+                _logger.LogInformation("Echo'ed data!");
+            }
+            catch (Exception e)
+            {
+
+            }
         }
     }
 }
