@@ -36,6 +36,7 @@ namespace NetworkEcho.SocketEcho
             _connected = false;
             _bufferPool = ArrayPool<byte>.Create();
         }
+
         public async Task ConnectAsync(IPEndPoint endPoint)
         {
             try
@@ -43,7 +44,7 @@ namespace NetworkEcho.SocketEcho
                 await _clientSocket.ConnectAsync(endPoint);
                 _logger.LogInformation("Connected successfully");
                 _connected = true;
-                new Task(async () => await ListenForIncomingData()).Start();
+                _ = ListenForIncomingData();
             }
             catch (Exception e)
             {
@@ -57,7 +58,7 @@ namespace NetworkEcho.SocketEcho
                 await _clientSocket.ConnectAsync(address, port);
                 _logger.LogInformation("Connected successfully");
                 _connected = true;
-                new Task(async () => await ListenForIncomingData()).Start();
+                _ = ListenForIncomingData();
             }
             catch (Exception e)
             {
@@ -83,7 +84,7 @@ namespace NetworkEcho.SocketEcho
                 }
                 catch (Exception e)
                 {
-
+                    _logger.LogWarning("Connection closed");
                 }
             } while (_connected);
         }

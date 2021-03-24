@@ -32,7 +32,6 @@ namespace NetworkEcho.SocketEcho
             _serverSocket = new Socket(addressFamily, socketType, protocolType);
             _bufferSize = bufferSize;
             _endPoint = endpoint;
-            ;
             _logger = logger ?? LoggerFactory.Create((_) => _.AddConsole()).CreateLogger<SocketEchoServer>();
 
             _cancelled = false;
@@ -40,13 +39,14 @@ namespace NetworkEcho.SocketEcho
             ConnectedSockets = _connectedSockets.AsReadOnly();
             _bufferPool = ArrayPool<byte>.Create();
         }
+
         public void Start(int backlog = 1)
         {
             try
             {
                 _serverSocket.Bind(_endPoint);
                 _serverSocket.Listen(backlog);
-                new Task(async () => await ListenForIncomingConnections()).Start();
+                _ = ListenForIncomingConnections();
             }
             catch (Exception e)
             {
@@ -73,7 +73,7 @@ namespace NetworkEcho.SocketEcho
                 {
                     Socket acceptedSocket = await _serverSocket.AcceptAsync();
                     _logger.LogInformation("Connection accepted!");
-                    new Task(async () => await AcceptDataAsync(acceptedSocket)).Start();
+                    _ = AcceptDataAsync(acceptedSocket);
                 }
                 catch (Exception e)
                 {
@@ -90,11 +90,12 @@ namespace NetworkEcho.SocketEcho
                     byte[] buffer = _bufferPool.Rent(_bufferSize);
                     int readBytes = await socket.ReceiveAsync(buffer, SocketFlags.None);
                     _logger.LogInformation("Data received!");
-                    new Task(async () => await EchoDataAsync(socket, buffer[..readBytes])).Start();
+                    _ = EchoDataAsync(socket, buffer[..readBytes]);
                     _bufferPool.Return(buffer);
                 }
                 catch (Exception e)
                 {
+                    _logger.LogWarning("Connection closed");
                     break;
                 }
             } while (!_cancelled);
@@ -108,7 +109,7 @@ namespace NetworkEcho.SocketEcho
             }
             catch (Exception e)
             {
-
+                _logger.LogInformation($"Failed to echo data:\n{e}");
             }
         }
     }
