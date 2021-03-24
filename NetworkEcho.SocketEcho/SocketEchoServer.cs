@@ -24,11 +24,12 @@ namespace NetworkEcho.SocketEcho
         public SocketEchoServer(
             IPEndPoint endpoint,
             int bufferSize,
+            AddressFamily addressFamily,
             SocketType socketType,
             ProtocolType protocolType,
             ILogger logger = null)
         {
-            _serverSocket = new Socket(socketType, protocolType);
+            _serverSocket = new Socket(addressFamily, socketType, protocolType);
             _bufferSize = bufferSize;
             _endPoint = endpoint;
             ;
@@ -76,7 +77,7 @@ namespace NetworkEcho.SocketEcho
                 }
                 catch (Exception e)
                 {
-
+                    _cancelled = true;
                 }
             } while (!_cancelled);
         }
@@ -92,9 +93,9 @@ namespace NetworkEcho.SocketEcho
                     new Task(async () => await EchoDataAsync(socket, buffer[..readBytes])).Start();
                     _bufferPool.Return(buffer);
                 }
-                catch (Exception)
+                catch (Exception e)
                 {
-
+                    break;
                 }
             } while (!_cancelled);
         }

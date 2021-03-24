@@ -12,7 +12,7 @@ namespace NetworkEcho.SocketEcho
 {
     public sealed class SocketClient
     {
-        public bool Connected { get; private set; }
+        private bool _connected;
         private readonly Socket _clientSocket;
         private readonly int _bufferLength;
         private readonly ILogger _logger;
@@ -21,18 +21,19 @@ namespace NetworkEcho.SocketEcho
 
         public SocketClient(
             int bufferSize,
+            AddressFamily addressFamily,
             SocketType socketType,
             ProtocolType protocolType,
             Encoding encoding = null,
             ILogger logger = null
             )
         {
-            _clientSocket = new Socket(socketType, protocolType);
+            _clientSocket = new Socket(addressFamily, socketType, protocolType);
             _bufferLength = bufferSize;
             _logger = logger ?? LoggerFactory.Create((_) => _.AddConsole()).CreateLogger<SocketClient>();
             _encoding = encoding ?? Encoding.UTF8;
 
-            Connected = false;
+            _connected = false;
             _bufferPool = ArrayPool<byte>.Create();
         }
         public async Task ConnectAsync(IPEndPoint endPoint)
@@ -41,12 +42,12 @@ namespace NetworkEcho.SocketEcho
             {
                 await _clientSocket.ConnectAsync(endPoint);
                 _logger.LogInformation("Connected successfully");
-                Connected = true;
+                _connected = true;
                 new Task(async () => await ListenForIncomingData()).Start();
             }
             catch (Exception e)
             {
-                Connected = false;
+                _connected = false;
             }
         }
         public async Task ConnectAsync(IPAddress address, int port)
@@ -55,17 +56,18 @@ namespace NetworkEcho.SocketEcho
             {
                 await _clientSocket.ConnectAsync(address, port);
                 _logger.LogInformation("Connected successfully");
-                Connected = true;
+                _connected = true;
                 new Task(async () => await ListenForIncomingData()).Start();
             }
-            catch(Exception e)
+            catch (Exception e)
             {
-                Connected = false;
+                _connected = false;
             }
         }
         public void Disconnect()
         {
-            _clientSocket.Disconnect(true);
+            _connected = false;
+            _clientSocket.Close();
         }
         private async Task ListenForIncomingData()
         {
@@ -83,7 +85,7 @@ namespace NetworkEcho.SocketEcho
                 {
 
                 }
-            } while (Connected);
+            } while (_connected);
         }
         public async Task SendMessageAsync(string message)
         {

@@ -13,6 +13,7 @@ namespace NetworkEcho.SocketEcho
             SocketEchoServer echoServer = new SocketEchoServer(
                 endpoint,
                 1024,
+                AddressFamily.InterNetwork,
                 SocketType.Stream,
                 ProtocolType.Tcp
                 );
@@ -20,12 +21,18 @@ namespace NetworkEcho.SocketEcho
 
             SocketClient client = new SocketClient(
                 1024,
+                AddressFamily.InterNetwork,
                 SocketType.Stream,
                 ProtocolType.Tcp
                 );
 
             await client.ConnectAsync(endpoint);
             await client.SendMessageAsync("Good evening");
+            await Task.Delay(5);
+            await client.SendMessageAsync("Echoo!");
+
+            client.Disconnect();
+
             await Task.Delay(-1);
         }
     }
